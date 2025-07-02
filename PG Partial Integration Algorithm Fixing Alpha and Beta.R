@@ -17,7 +17,7 @@ q      <- 2
 
 # Diseño X
 X <- array(rnorm(n * t_obs * p), dim = c(n, t_obs, p))
-X[ , , 1] <- 1
+#X[ , , 1] <- 1
 
 # Covariables Z
 Z <- matrix(rnorm(n * q), n, q)

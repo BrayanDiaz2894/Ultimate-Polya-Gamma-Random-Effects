@@ -9,9 +9,14 @@ library(MCMCpack)     # For inverse-Wishart sampling (riwish)
 library(truncnorm)    # For truncated normal sampling
 library(coda)         # For MCMC diagnostics (if needed)
 library(ggplot2)      # For plotting (if needed)
+library(Matrix)  # for block-diagonal matrix construction
+# Run the script named "Gamma_Function.R"
+source("Auxiliary Code/Gamma_Function.R")
 
 # II. Set seed for reproducibility
 set.seed(123)
+
+
 
 # III. Set simulation parameters
 n      <- 100  # Number of individuals
@@ -22,7 +27,7 @@ q      <- 2     # Number of random-effect covariates (random effects dimension)
 # IV. Simulate data
 # 1. Simulate predictor matrix X (n x t_obs x p) and ensure first column is intercept = 1
 X <- array(rnorm(n * t_obs * p), dim = c(n, t_obs, p))
-#X[,,1] <- 1  # first predictor is intercept (set to 1 for all observations)
+X[,,1] <- 1  # first predictor is intercept (set to 1 for all observations)
 
 # 2. Simulate individual-level covariates Z for random effects (n x q)
 Z <- matrix(rnorm(n * q), nrow = n, ncol = q)
@@ -54,7 +59,7 @@ Sigma0  <- diag(p) * 10          # relatively diffuse prior (variance 10 on diag
 Sigma0_inv <- solve(Sigma0)
 
 # 2. Prior for gamma (global location parameter) ~ N(0, G0)
-G0    <- 10                      # variance of gamma's prior (could be tuned as needed)
+G0    <- 10                     # variance of gamma's prior (could be tuned as needed)
 
 # 3. Prior for random effects covariance V_alpha ~ Inverse-Wishart(nu0, Lambda0)
 nu0     <- q + 2                 # degrees of freedom for IW prior (q+2 ensures finite mean)
@@ -86,11 +91,7 @@ gamma_save   <- numeric(iterations)                       # store gamma draws
 
 # VII. Gibbs Sampler loop
 
- 
-matriz <- matrix(data = 1:(3 * iterations), nrow = iterations, ncol = 3)
-
-
-#iter <- 2
+iter <- 1
 for (iter in 1:iterations) {
   
   print(iter)
@@ -173,20 +174,21 @@ for (iter in 1:iterations) {
     t(mu_beta2_star) %*% solve(Sigma_beta_star) %*% mu_beta2_star +
     1 / G0
   
-  matriz[iter,1] <- sum(omega_vec)
-  matriz[iter,2] <-  t(mu_beta2_star) %*% solve(Sigma_beta_star) %*% mu_beta2_star
-  matriz[iter,3] <- 1 / G0
-  
   # 3. Media y varianza
   mu_gamma     <- as.numeric(A / B)
   var_gamma    <- 1 / as.numeric(B)
   
-  gamma_new <- rtruncnorm(1, a = L_bound, b = U_bound, mean = mu_gamma, sd = sqrt(var_gamma))
+  ## ---------- 6. Muestreo de γ | h, ω, X, Z  ----------------------
+  gamma <- draw_gamma(omega_mat   = omega_mat,
+                      h_mat       = h_mat,
+                      X           = X,
+                      Z           = Z,
+                      Sigma0_inv  = Sigma0_inv,
+                      mu0         = mu0,
+                      V_alpha_inv = V_alpha_inv,
+                      G0          = G0)
+  ## ----------------------------------------------------------------
   
-  # 6. **Shift utilities:** define new h = h_tilde - gamma_new (to center latent utilities back around 0 threshold)
-  h_mat <- h_tilde - gamma_new
-  #    Update gamma to the newly sampled value (store for output)
-  gamma <- gamma_new
   
   # 7. **Sample Beta | h, ω, Alpha** from its full conditional (Gaussian).
   ## ---------------------------------------------------------------
