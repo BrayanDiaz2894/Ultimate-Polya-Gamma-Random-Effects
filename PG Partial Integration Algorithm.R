@@ -22,7 +22,7 @@ q      <- 2     # Number of random-effect covariates (random effects dimension)
 # IV. Simulate data
 # 1. Simulate predictor matrix X (n x t_obs x p) and ensure first column is intercept = 1
 X <- array(rnorm(n * t_obs * p), dim = c(n, t_obs, p))
-#X[,,1] <- 1  # first predictor is intercept (set to 1 for all observations)
+X[,,1] <- 1  # first predictor is intercept (set to 1 for all observations)
 
 # 2. Simulate individual-level covariates Z for random effects (n x q)
 Z <- matrix(rnorm(n * q), nrow = n, ncol = q)
@@ -41,7 +41,7 @@ eta <- matrix(0, nrow = n, ncol = t_obs)  # linear predictor for each observatio
 for (i in 1:n) {
   # Calculate eta[i,] = X[i,,] %*% beta_true + Z[i,] %*% alpha_true[i,]
   # (Note: Z[i,] %*% alpha_true[i,] gives a scalar, apply to all obs of individual i)
-  eta[i, ] <- X[i,, ] %*% beta_true + as.numeric(Z[i, ] %*% alpha_true[i, ])
+  eta[i, ] <-  X[i,, ] %*% beta_true + as.numeric(Z[i, ] %*% alpha_true[i, ])
 }
 # Generate binary outcomes Y from logistic model: P(Y=1) = logistic(eta)
 prob <- 1 / (1 + exp(-eta))
@@ -102,7 +102,7 @@ for (iter in 1:iterations) {
   ## Linear predictor η_ij  (same as before)
   eta_current <- matrix(0, n, t_obs)
   for (i in 1:n)
-    eta_current[i, ] <- X[i, , ] %*% Beta + as.numeric(Z[i, ] %*% Alpha[i, ])
+    eta_current[i, ] <- gamma + X[i, , ] %*% Beta + as.numeric(Z[i, ] %*% Alpha[i, ])
   
   ## λ_ij   and   π_ij  = F(η_ij)
   lambda_mat <- exp(eta_current)                     # λ_ij = exp(η_ij)
