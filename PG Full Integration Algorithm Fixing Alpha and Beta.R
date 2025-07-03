@@ -161,7 +161,7 @@ for (iter in 1:iterations) {
   # 5. **Sample gamma_new | ω, h_tilde, Y** from N(g_N, G_N) truncated to [L, U].
   
   ## ---------- 6. Muestreo de γ | h, ω, X, Z  ----------------------
-  V_alpha_inv <- solve(V_alpha)   # <= 
+  V_alpha_inv <- solve(V_alpha)   
   
   gamma <- draw_gamma(omega_mat   = omega_mat,
                       h_mat       = h_mat,
@@ -247,7 +247,7 @@ for (iter in 1:iterations) {
     resid_i <- h_i - gamma - (X_i %*% Beta)
     # Since Z_i is constant, ∑_j ω_ij * (h_ij - X_ij β) * Z_i = (Z_i) * ∑_j ω_ij * resid_i
     S_i <- Z_i * sum(omega_i * resid_i)   # (q x 1) vector
-    m_alpha_i <- solve(Q_alpha_i, S_i)
+    m_alpha_i <- solve(Q_alpha_i, S_i) ##X = solve(A,B) solves AX=B i.e., X = A^-1 * B
     # Draw Alpha_i ~ MVN(m_alpha_i, Q_alpha_i^{-1})
     cov_alpha_i <- solve(Q_alpha_i)
     Alpha[i, ] <- as.numeric(mvrnorm(1, mu = m_alpha_i, Sigma = cov_alpha_i))
