@@ -53,6 +53,7 @@ beta_true <- c(-1, 2, -1.5)
 
 load("Output/V_sampleslatentvar.RData")
 load("Output/V_samples.RData") 
+load("Output/V_samplesupg.RData") 
 #load("V_sampleslatentvarrealvlpha.RData") 
 #load("V_sampleslatentvarrealalpha.RData") 
 #load("V_samplesnlatentvarrealalpha.RData") 
@@ -205,9 +206,10 @@ summary_mcmc(alpha_samples_aug[, rnumb, 2])
 #1. Compare Behaviors. 
 
 density_plot <- density_overlay(vec1 = beta_1_samplesnaug, 
-                                vec2 = beta_1_samplesaug, 
+                                vec2 = beta_1_samplesaug,
+                                vec3 = beta_1_samplesupg,
                                 vertical_line = beta_true[1],
-                                labels = c("Augmented by Gamma", "Augmented by Gamma and latent"))
+                                labels = c("Augmented by Gamma", "Augmented by Gamma and latent", "UPG"))
 
 print(density_plot)
 

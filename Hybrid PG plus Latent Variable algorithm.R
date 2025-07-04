@@ -63,8 +63,8 @@ inversechol <- function(mat, reg = 0) {
 }
 
 # V. Gibbs Sampler Settings & Initialization
-n_iter <- 10000   # total iterations
-burn   <-  n_iter*0.1*0 # burn-in iterations
+n_iter <- 2000   # total iterations
+burn   <-  n_iter*0.1 # burn-in iterations
 
 # Storage for parameters:
 beta_samples <- matrix(NA, n_iter, p)           # Fixed effects (p-dimensional)

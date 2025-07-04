@@ -22,7 +22,7 @@ q      <- 2     # Number of random-effect covariates (random effects dimension)
 # IV. Simulate data
 # 1. Simulate predictor matrix X (n x t_obs x p) and ensure first column is intercept = 1
 X <- array(rnorm(n * t_obs * p), dim = c(n, t_obs, p))
-X[,,1] <- 1  # first predictor is intercept (set to 1 for all observations)
+#X[,,1] <- 1  # first predictor is intercept (set to 1 for all observations)
 
 # 2. Simulate individual-level covariates Z for random effects (n x q)
 Z <- matrix(rnorm(n * q), nrow = n, ncol = q)
@@ -41,7 +41,7 @@ eta <- matrix(0, nrow = n, ncol = t_obs)  # linear predictor for each observatio
 for (i in 1:n) {
   # Calculate eta[i,] = X[i,,] %*% beta_true + Z[i,] %*% alpha_true[i,]
   # (Note: Z[i,] %*% alpha_true[i,] gives a scalar, apply to all obs of individual i)
-  eta[i, ] <-  X[i,, ] %*% beta_true + as.numeric(Z[i, ] %*% alpha_true[i, ])
+  eta[i, ] <- X[i,, ] %*% beta_true + as.numeric(Z[i, ] %*% alpha_true[i, ])
 }
 # Generate binary outcomes Y from logistic model: P(Y=1) = logistic(eta)
 prob <- 1 / (1 + exp(-eta))
@@ -77,7 +77,7 @@ for (i in 1:n) {
 }
 
 # VI. Prepare storage for MCMC samples
-iterations <- 2000
+iterations <- 10000
 burnin     <- floor(iterations * 0.1)    # 10% burn-in
 Beta_save    <- matrix(NA, nrow = iterations, ncol = p)    # store beta draws
 Alpha_save   <- array(NA, dim = c(iterations, n, q))       # store alpha draws
@@ -86,7 +86,7 @@ gamma_save   <- numeric(iterations)                       # store gamma draws
 
 # VII. Gibbs Sampler loop
 
- 
+
 matriz <- matrix(data = 1:(3 * iterations), nrow = iterations, ncol = 3)
 
 
@@ -102,7 +102,7 @@ for (iter in 1:iterations) {
   ## Linear predictor η_ij  (same as before)
   eta_current <- matrix(0, n, t_obs)
   for (i in 1:n)
-    eta_current[i, ] <- gamma + X[i, , ] %*% Beta + as.numeric(Z[i, ] %*% Alpha[i, ])
+    eta_current[i, ] <- X[i, , ] %*% Beta + as.numeric(Z[i, ] %*% Alpha[i, ])
   
   ## λ_ij   and   π_ij  = F(η_ij)
   lambda_mat <- exp(eta_current)                     # λ_ij = exp(η_ij)
@@ -294,3 +294,56 @@ beta_mcmc <- mcmc(Beta_samples)
 summary(beta_mcmc)
 # Example trace plot for beta:
 plot(beta_mcmc) 
+
+
+## ------------------------------------------------------------------
+## 1.  Extraer columnas de Beta_samples  →  vectores individuales
+## ------------------------------------------------------------------
+beta_1_samples <- Beta_samples[ , 1]                  # (iter × 1)
+beta_2_samples <- Beta_samples[ , 2]
+beta_3_samples <- Beta_samples[ , 3]
+
+## Etiquetas “aug” para ser coherentes
+beta_1_samplespupg <- beta_1_samples
+beta_2_samplespupg <- beta_2_samples
+beta_3_samplespupg <- beta_3_samples
+
+## ------------------------------------------------------------------
+## 2.  Convertir lista de V_alpha_samples en array 3-D y sacar elementos
+##      (q = 2 ⇒ cada matriz es 2×2, así que simplificamos a 3-D)
+## ------------------------------------------------------------------
+V_arr <- simplify2array(V_alpha_samples)   # dims: 2 × 2 × draws
+
+V1_pupg  <- V_arr[1, 1, ]   # trayectoria de V[1,1]
+V2_pupg  <- V_arr[2, 2, ]   # trayectoria de V[2,2]
+V21_pupg <- V_arr[2, 1, ]   # trayectoria de V[2,1]  (equivalente a V[1,2])
+
+## ------------------------------------------------------------------
+## 3.  Sacar ejemplos de alpha:
+##     a1_ag = componente 1 de α para el INDIVIDUO 1  a lo largo de draws
+##     a2_ag = componente 2 de α para el INDIVIDUO 1  a lo largo de draws
+##     (Ajusta el índice “1” si te interesa otro individuo)
+## ------------------------------------------------------------------
+a1_pupg <- Alpha_samples[ , 1, 1]   # (iter × 1)
+a2_pupg <- Alpha_samples[ , 1, 2]
+
+## Mantén el array completo por si lo necesitas
+alpha_samples_pupg <- Alpha_samples
+
+## ------------------------------------------------------------------
+## 4.  Si quieres guardar también γ (opcional: lo llamo timesamples_aug
+##     para respetar tu variable original; renómbralo si prefieres)
+## ------------------------------------------------------------------
+timesamples_pupg <- gamma_samples   # vector (iter × 1)
+
+## ------------------------------------------------------------------
+## 5.  Guardar TODO en un único .RData, idéntico a tu otro script
+## ------------------------------------------------------------------
+if (!dir.exists("Output")) dir.create("Output")
+
+save(a1_pupg, a2_pupg,
+     V21_pupg, V2_pupg, V1_pupg,
+     beta_1_samplespupg, beta_2_samplespupg, beta_3_samplespupg,
+     alpha_samples_pupg, timesamples_pupg,
+     file = "Output/V_samplespupg.RData")
+

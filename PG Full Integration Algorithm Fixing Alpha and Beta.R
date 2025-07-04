@@ -9,19 +9,12 @@ library(MCMCpack)     # For inverse-Wishart sampling (riwish)
 library(truncnorm)    # For truncated normal sampling
 library(coda)         # For MCMC diagnostics (if needed)
 library(ggplot2)      # For plotting (if needed)
-library(Matrix)  # for block-diagonal matrix construction
-library(profvis)
-
-# Run the script named "Gamma_Function.R"
-source("Auxiliary Code/Gamma_Function.R")
 
 # II. Set seed for reproducibility
 set.seed(123)
 
-
-
 # III. Set simulation parameters
-n      <- 500  # Number of individuals
+n      <- 100  # Number of individuals
 t_obs  <- 30    # Observations per individual
 p      <- 3     # Number of fixed-effect predictors (including intercept)
 q      <- 2     # Number of random-effect covariates (random effects dimension)
@@ -29,15 +22,15 @@ q      <- 2     # Number of random-effect covariates (random effects dimension)
 # IV. Simulate data
 # 1. Simulate predictor matrix X (n x t_obs x p) and ensure first column is intercept = 1
 X <- array(rnorm(n * t_obs * p), dim = c(n, t_obs, p))
-X[,,1] <- 1  # first predictor is intercept (set to 1 for all observations)
+#X[,,1] <- 1  # first predictor is intercept (set to 1 for all observations)
 
 # 2. Simulate individual-level covariates Z for random effects (n x q)
 Z <- matrix(rnorm(n * q), nrow = n, ncol = q)
 
 # 3. Set "true" covariance for random effects and simulate true random effects alpha_true
 
-V_alpha_true <- matrix(c(1, 0.5,   # Covariance matrix (q x q) for random effects
-                         0.5, 3), nrow = q, ncol = q)
+V_alpha_true <- matrix(c(1, 0,   # Covariance matrix (q x q) for random effects
+                         0, 3), nrow = q, ncol = q)
 alpha_true <- mvrnorm(n = n, mu = rep(0, q), Sigma = V_alpha_true)  # random effects for each individual (n x q)
 
 # 4. Set "true" fixed effects beta_true
@@ -52,8 +45,7 @@ for (i in 1:n) {
 }
 # Generate binary outcomes Y from logistic model: P(Y=1) = logistic(eta)
 prob <- 1 / (1 + exp(-eta))
-Y <- matrix(rbinom(n * t_obs, size = 1, prob = prob), nrow = n, ncol = t_obs) 
-#Here prob is a matriz but the function rbnom vectorizes it.
+Y <- matrix(rbinom(n * t_obs, size = 1, prob = prob), nrow = n, ncol = t_obs)
 
 # V. Set up priors and initial values for the Gibbs sampler
 # 1. Priors for fixed effects beta ~ N(mu0, Sigma0)
@@ -62,7 +54,7 @@ Sigma0  <- diag(p) * 10          # relatively diffuse prior (variance 10 on diag
 Sigma0_inv <- solve(Sigma0)
 
 # 2. Prior for gamma (global location parameter) ~ N(0, G0)
-G0    <- 10                     # variance of gamma's prior (could be tuned as needed)
+G0    <- 10                      # variance of gamma's prior (could be tuned as needed)
 
 # 3. Prior for random effects covariance V_alpha ~ Inverse-Wishart(nu0, Lambda0)
 nu0     <- q + 2                 # degrees of freedom for IW prior (q+2 ensures finite mean)
@@ -82,8 +74,7 @@ for (i in 1:n) {
   idx_start <- (i-1)*t_obs + 1
   idx_end   <- i * t_obs
   X_all[idx_start:idx_end, ] <- X[i,, ]
-} #We take the array and on each block defined from idx start to idx 
-#end we put all the observations for each individual.
+}
 
 # VI. Prepare storage for MCMC samples
 iterations <- 2000
@@ -94,8 +85,12 @@ V_alpha_save <- vector("list", length = iterations)        # store V_alpha draws
 gamma_save   <- numeric(iterations)                       # store gamma draws
 
 # VII. Gibbs Sampler loop
-iter <- 1
 
+
+matriz <- matrix(data = 1:(3 * iterations), nrow = iterations, ncol = 3)
+
+
+iter <- 1
 for (iter in 1:iterations) {
   
   print(iter)
@@ -107,14 +102,14 @@ for (iter in 1:iterations) {
   ## Linear predictor η_ij  (same as before)
   eta_current <- matrix(0, n, t_obs)
   for (i in 1:n)
-    eta_current[i, ] <- gamma + X[i, , ] %*% Beta + as.numeric(Z[i, ] %*% Alpha[i, ])
+    eta_current[i, ] <- X[i, , ] %*% Beta + as.numeric(Z[i, ] %*% Alpha[i, ])
   
   ## λ_ij   and   π_ij  = F(η_ij)
   lambda_mat <- exp(eta_current)                     # λ_ij = exp(η_ij)
   pi_mat     <- lambda_mat / (1 + lambda_mat)        # π_ij = λ /(1+λ) = plogis(η)
   
   ## Draw U_ij  ∼  U(0,1)   (avoid the exact endpoints)
-  epsU  <- .Machine$double.eps ##Add smal noise to avoids case of U=0.
+  epsU  <- .Machine$double.eps
   U_mat <- matrix(runif(n * t_obs, epsU, 1 - epsU), n, t_obs)
   
   ## Construct V_ij  as in the paper:
@@ -126,7 +121,7 @@ for (iter in 1:iterations) {
   ##   y = 1  →  V ∼ U(1-π , 1)
   
   ## Logistic inverse-CDF  ε_ij  and latent utility  h_ij
-  eps_mat <- log( V_mat / (1 - V_mat) )          # F^{-1}_ε (V) #This comes from the inverse of the logis.
+  eps_mat <- log( V_mat / (1 - V_mat) )          # F^{-1}_ε (V)
   h_mat   <- eta_current + eps_mat               # h_ij = η_ij + ε_ij
   # ------------------------------------------------------------------------
   
@@ -159,22 +154,21 @@ for (iter in 1:iterations) {
   if (is.infinite(U_bound)) U_bound <- Inf
   
   # 5. **Sample gamma_new | ω, h_tilde, Y** from N(g_N, G_N) truncated to [L, U].
+  V_alpha_inv <- solve(V_alpha)  
   
-  ## ---------- 6. Muestreo de γ | h, ω, X, Z  ----------------------
-  V_alpha_inv <- solve(V_alpha)   
+  gamma_new <- draw_gamma(omega_mat   = omega_mat,
+                          h_mat       = h_tilde,
+                          X           = X,
+                          Z           = Z,
+                          Sigma0_inv  = Sigma0_inv,
+                          mu0         = mu0,
+                          V_alpha_inv = V_alpha_inv,
+                          G0          = G0)
   
-  gamma <- draw_gamma(omega_mat   = omega_mat,
-                      h_mat       = h_mat,
-                      X           = X,
-                      Z           = Z,
-                      Sigma0_inv  = Sigma0_inv,
-                      mu0         = mu0,
-                      V_alpha_inv = V_alpha_inv,
-                      G0          = G0)
-  ## ----------------------------------------------------------------
-  #h_centered <- h_mat - gamma   # h^L_{ij}  =  h_{ij}  -  gamma ##The objective of this line
-  #Is substract gamma in the mean and alpha terms used in the
-  
+  # 6. **Shift utilities:** define new h = h_tilde - gamma_new (to center latent utilities back around 0 threshold)
+  h_mat <- h_tilde - gamma_new
+  #    Update gamma to the newly sampled value (store for output)
+  gamma <- gamma_new
   
   # 7. **Sample Beta | h, ω, Alpha** from its full conditional (Gaussian).
   ## ---------------------------------------------------------------
@@ -207,7 +201,7 @@ for (iter in 1:iterations) {
       h_ij     <- h_mat   [ i, j ]             # scalar
       
       # Residual    r_ij = h_ij - Zα_i
-      r_ij <- h_ij - gamma - zalpha_i
+      r_ij <- h_ij - zalpha_i
       
       # Update Σ ω X Xᵀ
       Q_beta <- Q_beta + omega_ij * ( x_ij %*% t(x_ij) )
@@ -244,10 +238,10 @@ for (iter in 1:iterations) {
     Q_alpha_i <- solve(V_alpha) + sum_omega_i * (Z_i %*% t(Z_i))
     # Compute mean: m_alpha_i = Q_alpha_i^{-1} [ ∑_j ω_ij * Z_ij * (h_ij - X_ij^T Beta) ]
     # (Note: h_ij - X_ij^T Beta is the part of latent utility not explained by fixed effects.)
-    resid_i <- h_i - gamma - (X_i %*% Beta)
+    resid_i <- h_i - (X_i %*% Beta)     # vector length t_obs
     # Since Z_i is constant, ∑_j ω_ij * (h_ij - X_ij β) * Z_i = (Z_i) * ∑_j ω_ij * resid_i
     S_i <- Z_i * sum(omega_i * resid_i)   # (q x 1) vector
-    m_alpha_i <- solve(Q_alpha_i, S_i) ##X = solve(A,B) solves AX=B i.e., X = A^-1 * B
+    m_alpha_i <- solve(Q_alpha_i, S_i)
     # Draw Alpha_i ~ MVN(m_alpha_i, Q_alpha_i^{-1})
     cov_alpha_i <- solve(Q_alpha_i)
     Alpha[i, ] <- as.numeric(mvrnorm(1, mu = m_alpha_i, Sigma = cov_alpha_i))
@@ -282,3 +276,56 @@ beta_mcmc <- mcmc(Beta_samples)
 summary(beta_mcmc)
 # Example trace plot for beta:
 plot(beta_mcmc) 
+
+## ------------------------------------------------------------------
+## 1.  Extraer columnas de Beta_samples  →  vectores individuales
+## ------------------------------------------------------------------
+beta_1_samples <- Beta_samples[ , 1]                  # (iter × 1)
+beta_2_samples <- Beta_samples[ , 2]
+beta_3_samples <- Beta_samples[ , 3]
+
+## Etiquetas “aug” para ser coherentes
+beta_1_samplesupg <- beta_1_samples
+beta_2_samplesupg <- beta_2_samples
+beta_3_samplesupg <- beta_3_samples
+
+## ------------------------------------------------------------------
+## 2.  Convertir lista de V_alpha_samples en array 3-D y sacar elementos
+##      (q = 2 ⇒ cada matriz es 2×2, así que simplificamos a 3-D)
+## ------------------------------------------------------------------
+V_arr <- simplify2array(V_alpha_samples)   # dims: 2 × 2 × draws
+
+V1_upg  <- V_arr[1, 1, ]   # trayectoria de V[1,1]
+V2_upg  <- V_arr[2, 2, ]   # trayectoria de V[2,2]
+V21_upg <- V_arr[2, 1, ]   # trayectoria de V[2,1]  (equivalente a V[1,2])
+
+## ------------------------------------------------------------------
+## 3.  Sacar ejemplos de alpha:
+##     a1_ag = componente 1 de α para el INDIVIDUO 1  a lo largo de draws
+##     a2_ag = componente 2 de α para el INDIVIDUO 1  a lo largo de draws
+##     (Ajusta el índice “1” si te interesa otro individuo)
+## ------------------------------------------------------------------
+a1_upg <- Alpha_samples[ , 1, 1]   # (iter × 1)
+a2_upg <- Alpha_samples[ , 1, 2]
+
+## Mantén el array completo por si lo necesitas
+alpha_samples_upg <- Alpha_samples
+
+## ------------------------------------------------------------------
+## 4.  Si quieres guardar también γ (opcional: lo llamo timesamples_aug
+##     para respetar tu variable original; renómbralo si prefieres)
+## ------------------------------------------------------------------
+timesamples_upg <- gamma_samples   # vector (iter × 1)
+
+## ------------------------------------------------------------------
+## 5.  Guardar TODO en un único .RData, idéntico a tu otro script
+## ------------------------------------------------------------------
+if (!dir.exists("Output")) dir.create("Output")
+
+save(a1_upg, a2_upg,
+     V21_upg, V2_upg, V1_upg,
+     beta_1_samplesupg, beta_2_samplesupg, beta_3_samplesupg,
+     alpha_samples_upg, timesamples_upg,
+     file = "Output/V_samplesupg.RData")
+
+cat("Objetos guardados en Output/V_sampleslatentvar.RData\n")
