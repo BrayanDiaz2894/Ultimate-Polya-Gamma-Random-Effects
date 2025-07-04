@@ -63,7 +63,7 @@ inversechol <- function(mat, reg = 0) {
 }
 
 # V. Gibbs Sampler Settings & Initialization
-n_iter <- 2000   # total iterations
+n_iter <- 10000   # total iterations
 burn   <-  n_iter*0.1 # burn-in iterations
 
 # Storage for parameters:

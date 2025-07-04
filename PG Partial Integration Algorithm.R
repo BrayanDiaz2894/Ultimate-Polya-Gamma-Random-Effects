@@ -22,15 +22,15 @@ q      <- 2     # Number of random-effect covariates (random effects dimension)
 # IV. Simulate data
 # 1. Simulate predictor matrix X (n x t_obs x p) and ensure first column is intercept = 1
 X <- array(rnorm(n * t_obs * p), dim = c(n, t_obs, p))
-#X[,,1] <- 1  # first predictor is intercept (set to 1 for all observations)
+X[,,1] <- 1  # first predictor is intercept (set to 1 for all observations)
 
 # 2. Simulate individual-level covariates Z for random effects (n x q)
 Z <- matrix(rnorm(n * q), nrow = n, ncol = q)
 
 # 3. Set "true" covariance for random effects and simulate true random effects alpha_true
 
-V_alpha_true <- matrix(c(1, 0,   # Covariance matrix (q x q) for random effects
-                         0, 3), nrow = q, ncol = q)
+V_alpha_true <- matrix(c(1, 0.5,   # Covariance matrix (q x q) for random effects
+                         0.5, 3), nrow = q, ncol = q)
 alpha_true <- mvrnorm(n = n, mu = rep(0, q), Sigma = V_alpha_true)  # random effects for each individual (n x q)
 
 # 4. Set "true" fixed effects beta_true
@@ -50,15 +50,15 @@ Y <- matrix(rbinom(n * t_obs, size = 1, prob = prob), nrow = n, ncol = t_obs)
 # V. Set up priors and initial values for the Gibbs sampler
 # 1. Priors for fixed effects beta ~ N(mu0, Sigma0)
 mu0     <- rep(0, p)
-Sigma0  <- diag(p) * 10          # relatively diffuse prior (variance 10 on diagonal)
+Sigma0  <- diag(p)          # relatively diffuse prior (variance 10 on diagonal)
 Sigma0_inv <- solve(Sigma0)
 
 # 2. Prior for gamma (global location parameter) ~ N(0, G0)
 G0    <- 10                      # variance of gamma's prior (could be tuned as needed)
 
 # 3. Prior for random effects covariance V_alpha ~ Inverse-Wishart(nu0, Lambda0)
-nu0     <- q + 2                 # degrees of freedom for IW prior (q+2 ensures finite mean)
-Lambda0 <- diag(q)               # scale matrix for IW prior (identity for simplicity)
+nu0     <- q + 3                 # degrees of freedom for IW prior (q+2 ensures finite mean)
+Lambda0 <- diag(2, q)               # scale matrix for IW prior (identity for simplicity)
 
 # 4. Initial values for parameters
 Beta    <- rep(0, p)             # start fixed effects at 0

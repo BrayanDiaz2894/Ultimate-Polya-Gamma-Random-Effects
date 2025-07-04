@@ -54,6 +54,7 @@ beta_true <- c(-1, 2, -1.5)
 load("Output/V_sampleslatentvar.RData")
 load("Output/V_samples.RData") 
 load("Output/V_samplesupg.RData") 
+load("Output/V_samplespupg.RData") 
 #load("V_sampleslatentvarrealvlpha.RData") 
 #load("V_sampleslatentvarrealalpha.RData") 
 #load("V_samplesnlatentvarrealalpha.RData") 
@@ -208,22 +209,27 @@ summary_mcmc(alpha_samples_aug[, rnumb, 2])
 density_plot <- density_overlay(vec1 = beta_1_samplesnaug, 
                                 vec2 = beta_1_samplesaug,
                                 vec3 = beta_1_samplesupg,
+                                vec4 = beta_1_samplespupg,
                                 vertical_line = beta_true[1],
-                                labels = c("Augmented by Gamma", "Augmented by Gamma and latent", "UPG"))
+                                labels = c("Augmented by Gamma", "Augmented by Gamma and latent", "UPG Full" , "UPG Partial"))
 
 print(density_plot)
 
 density_plot <- density_overlay(vec1 = beta_2_samplesnaug, 
-                                vec2 = beta_2_samplesaug, 
+                                vec2 = beta_2_samplesaug,
+                                vec3 = beta_2_samplesupg,
+                                vec4 = beta_2_samplespupg,
                                 vertical_line = beta_true[2],
-                                labels = c("Augmented by Gamma", "Augmented by Gamma and latent"))
+                                labels = c("Augmented by Gamma", "Augmented by Gamma and latent", "UPG Full" , "UPG Partial"))
 
 print(density_plot)
 
 density_plot <- density_overlay(vec1 = beta_3_samplesnaug, 
-                                vec2 = beta_3_samplesaug, 
+                                vec2 = beta_3_samplesaug,
+                                vec3 = beta_3_samplesupg,
+                                vec4 = beta_3_samplespupg,
                                 vertical_line = beta_true[3],
-                                labels = c("Augmented by Gamma", "Augmented by Gamma and latent"))
+                                labels = c("Augmented by Gamma", "Augmented by Gamma and latent", "UPG Full" , "UPG Partial"))
 
 print(density_plot)
 
@@ -349,28 +355,31 @@ ggsave(filename = "Output/Results/tracebeta3.pdf", width = 8, height = 4, dpi = 
 #1. Compare Behaviors.
 density_plot <- density_overlay(vec1 = V1_naug,
                                 vec2 = V1_aug,
-                                #vec3 = V1_naugreal,
-                                #vec3 = V1_augreal,
+                                vec3 = V1_pupg,
+                                vec4 = V1_pupg,
                                 vertical_line = V_alpha_true[1,1],
-                                labels = c("Augmented by Gamma", "Augmented by Gamma and latent"))
+                                labels = c("Augmented by Gamma", "Augmented by Gamma and latent" , "UPG Full" , "UPG Partial"))
 
 print(density_plot)
 
 density_plot <- density_overlay(vec1 = V2_naug,
                                 vec2 = V2_aug,
-                                #vec3 = V1_naugreal,
-                                vertical_line = V_alpha_true[2,2],
-                                labels = c("Augmented by Gamma", "Augmented by Gamma and latent"))
+                                vec3 = V2_pupg,
+                                vec4 = V2_pupg,
+                                vertical_line = V_alpha_true[1,1],
+                                labels = c("Augmented by Gamma", "Augmented by Gamma and latent" , "UPG Full" , "UPG Partial"))
 
 print(density_plot)
 
 density_plot <- density_overlay(vec1 = V21_naug,
                                 vec2 = V21_aug,
-                                #vec3 = V1_naugreal,
+                                vec3 = V21_pupg,
+                                vec4 = V21_pupg,
                                 vertical_line = V_alpha_true[2,1],
-                                labels = c("Augmented by Gamma", "Augmented by Gamma and latent"))
+                                labels = c("Augmented by Gamma", "Augmented by Gamma and latent" , "UPG Full" , "UPG Partial"))
 
 print(density_plot)
+
 
 #2. Get the Computational Efficiency.
 
@@ -518,6 +527,15 @@ density_plot <- density_overlay(vec1 = a1_nag[,1],
                                 vec2 = a1_ag[,1],
                                 vertical_line = alpha_true[1,1],
                                 labels = c("Augmented by Gamma", "Augmented by Gamma and latent"))
+
+print(density_plot)
+
+density_plot <- density_overlay(vec1 = a1_nag[,1],
+                                vec2 = a1_ag[,1],
+                                vec3 = a1_pupg,
+                                vec3 = a1_pupg,
+                                vertical_line = alpha_true[1,1],
+                                labels = c("Augmented by Gamma", "Augmented by Gamma and latent", "UPG Full", "UPG Partial"))
 
 print(density_plot)
 
